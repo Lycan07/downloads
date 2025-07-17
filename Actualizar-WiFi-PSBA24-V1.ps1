@@ -1,19 +1,40 @@
-# Ruta para almacenar el controlador descargado localmente
 $driverFolder = "C:\ProgramData\ActualizarWLAN"
 $desiredVersion = "2024.10.230.2"
 $adapterName = "Realtek 8822CE Wireless LAN 802.11ac PCI-E NIC"
-$zipFile = Join-Path $driverFolder "driver-wifi-PSBA24.zip"
+$officialZipName = "driver-wifi-PSBA24.zip"
+$zipFile = Join-Path $driverFolder $officialZipName
 $downloadUrl = "https://github.com/Lycan07/downloads/releases/download/v2.0/realtek-8822ce.zip"
 $driverUpdated = $false
 
-# Crear la carpeta si no existe
+# Crear carpeta si no existe
 If (-not (Test-Path $driverFolder)) {
     New-Item -Path $driverFolder -ItemType Directory -Force | Out-Null
 }
 
-# Descargar el archivo ZIP si no existe
-if (-not (Test-Path $zipFile)) {
-    Write-Host "Descargando el controlador (3 intentos máximo)..."
+# Posibles nombres de archivo ZIP que puede haber
+$possibleZips = @("realtek-8822ce.zip", "driver-wifi-PSBA24.zip")
+
+# Buscar si existe alguno de esos archivos
+$existingZip = $null
+foreach ($name in $possibleZips) {
+    $path = Join-Path $driverFolder $name
+    if (Test-Path $path) {
+        $existingZip = $path
+        break
+    }
+}
+
+if ($existingZip) {
+    # Si el archivo existente NO es el nombre oficial, renombrar
+    if ($existingZip -ne $zipFile) {
+        Write-Host "Renombrando $existingZip a $zipFile"
+        Rename-Item -Path $existingZip -NewName $officialZipName -Force
+    } else {
+        Write-Host "Archivo ZIP correcto ya existe: $zipFile"
+    }
+} else {
+    # No existe ningún ZIP, descargar el oficial
+    Write-Host "No se encontró ZIP local, descargando $downloadUrl"
     $maxRetries = 3
     $retryDelay = 5
     $attempt = 0
@@ -37,11 +58,10 @@ if (-not (Test-Path $zipFile)) {
         Write-Warning "No se pudo descargar el archivo después de $maxRetries intentos."
         exit 1
     }
-} else {
-    Write-Host "Archivo ZIP ya existe. Se usará la copia local: $zipFile"
 }
 
-# Forzar extracción del ZIP para actualizar todos los archivos
+# Seguir con la extracción, instalación y demás...
+
 Write-Host "Extrayendo archivo ZIP..."
 Try {
     Expand-Archive -Path $zipFile -DestinationPath $driverFolder -Force
@@ -102,7 +122,5 @@ if ($driverUpdated) {
     Write-Host "Reinicio forzado en 30 segundos por mantenimiento crítico. Guardá tus tareas."
     Start-Process -FilePath "shutdown.exe" -ArgumentList "/r /t 30 /c `"Reinicio forzado en 30 segundos por mantenimiento crítico. Guardá tus tareas.`""
 }
-
-exit 0
 
 exit 0
